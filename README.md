@@ -32,6 +32,7 @@ The goal of this project is to design and implement a system that can take a web
 ---
 
 ## Folder Structure
+````
 web-content-qa-system/
 ├── src/
 │   ├── init.py         # Initializes the Python package
@@ -48,7 +49,7 @@ web-content-qa-system/
 ├── .gitignore              # Specifies files/folders to be ignored by Git
 ├── README.md               # This project description and instructions
 └── main.py                 # The main entry point for the interactive CLI
-
+````
 
 ---
 
