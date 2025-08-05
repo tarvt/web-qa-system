@@ -33,7 +33,7 @@ The goal of this project is to design and implement a system that can take a web
 
 ## Folder Structure
 ````
-web-content-qa-system/
+web-qa-system/
 ├── src/
 │   ├── init.py         # Initializes the Python package
 │   ├── extractor.py        # Handles web scraping logic (fetching & parsing)
@@ -72,8 +72,8 @@ Follow these steps to set up and run the system:
 
 1.  **Clone the Repository:**
     ```bash
-    git clone <your-repository-url>
-    cd web-content-qa-system
+    git clone https://github.com/tarvt/web-qa-system.git
+    cd web-qa-system
     ```
 
 2.  **Create a Virtual Environment (Recommended):**
