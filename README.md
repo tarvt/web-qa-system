@@ -39,8 +39,7 @@ web-qa-system/
 │   ├── extractor.py        # Handles web scraping logic (fetching & parsing)
 │   ├── processor.py        # Handles data preparation (embeddings, FAISS indexing)
 │   ├── storage.py          # Handles data persistence (saving/loading chunks)
-│   ├── llm_api.py          # (Future) Handles interaction with the LLM API
-│   └── cli.py              # (Future) Main interactive CLI logic (currently in main.py)
+│   ├── llm_api.py          # Handles interaction with the LLM API
 ├── data/                   # Directory to store persistent data
 │   ├── chunks.jsonl        # Stores raw extracted text chunks
 │   ├── index.faiss         # The FAISS vector index file
@@ -61,7 +60,7 @@ web-qa-system/
 - **BeautifulSoup4**: HTML parsing for content extraction.
 - **sentence-transformers**: For generating semantically rich text embeddings.
 - **faiss-cpu**: For high-performance similarity search on text embeddings.
-- **google-generativeai** (Future): Python client library for interacting with Google's Gemini API.
+- **google-generativeai**: Python client library for interacting with Google's Gemini API.
 
 **User Interface:** Interactive Command-Line Interface (CLI).
 
@@ -88,15 +87,6 @@ Follow these steps to set up and run the system:
 3.  **Install Dependencies:**
     ```bash
     pip install -r requirements.txt
-    ```
-
-    Make sure your `requirements.txt` file contains:
-    ```
-    aiohttp==3.9.5
-    beautifulsoup4==4.12.3
-    faiss-cpu==1.8.0
-    sentence-transformers==2.7.0
-    # google-generativeai (will be added in the next stage)
     ```
 
 4.  **Create Data Directory:**
