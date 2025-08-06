@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures # <--- NEW IMPORT
 from src.extractor import extract_content_from_urls
 from src.storage import load_chunks, save_chunks
 from src.processor import DataProcessor
@@ -17,6 +18,17 @@ llm_client = None # Initialize as None, will be set up when needed
 # by both main and background processing functions.
 all_chunks: List[Dict[str, Any]] = []
 
+# Create a ThreadPoolExecutor for running blocking I/O operations (like input())
+# This allows the asyncio event loop to remain responsive.
+executor = concurrent.futures.ThreadPoolExecutor(max_workers=1) # Use 1 worker for sequential input
+
+async def async_input(prompt: str = "") -> str:
+    """
+    Asynchronously gets user input by running the blocking input() in a separate thread.
+    """
+    return await asyncio.get_running_loop().run_in_executor(executor, input, prompt)
+
+
 async def _process_urls_in_background(urls: List[str]):
     """
     Helper function to run URL fetching, content extraction, and index updating
@@ -24,7 +36,7 @@ async def _process_urls_in_background(urls: List[str]):
     """
     global all_chunks # Explicitly declare intent to modify the global all_chunks
 
-    logging.info(f"Background task started for {len(urls)} URL(s).")
+    #logging.info(f"Background task started for {len(urls)} URL(s).")
     new_extracted_chunks = await extract_content_from_urls(urls)
     
     if new_extracted_chunks:
@@ -32,17 +44,19 @@ async def _process_urls_in_background(urls: List[str]):
         # This is crucial to avoid overwriting changes from other potential background tasks
         # or missed updates if the main loop's `all_chunks` isn't fully synchronized yet.
         current_disk_chunks = await load_chunks() 
+        #logging.info(f"Background: Loaded {len(current_disk_chunks)} chunks from disk before adding new.")
         current_disk_chunks.extend(new_extracted_chunks)
         await save_chunks(current_disk_chunks)
         
         # Update the global all_chunks variable
         # This ensures the main loop's in-memory data is consistent with disk
         all_chunks = current_disk_chunks 
+        #logging.info(f"Background: Global all_chunks updated to {len(all_chunks)} chunks.")
 
-        logging.info("Processing all content chunks and updating the search index in background...")
+        #logging.info("Processing all content chunks and updating the search index in background...")
         # Pass the globally updated 'all_chunks' to the data processor
         data_processor.create_and_save_index(all_chunks) 
-        logging.info("Background index update completed.")
+        #logging.info("Background index update completed.")
     else:
         logging.warning("No new content was successfully extracted in background task.")
 
@@ -52,6 +66,21 @@ async def handle_question_answering(question: str):
     Handles the Q&A process by searching the FAISS index and then using the LLM.
     """
     global llm_client # Declare global to modify the llm_client variable
+
+    # Ensure the latest chunks are loaded before attempting Q&A
+    # This is important if a background task just finished and updated the disk.
+    global all_chunks
+    #logging.info("Q&A: Reloading all_chunks from disk to ensure latest data.")
+    all_chunks = await load_chunks() 
+    #logging.info(f"Q&A: Loaded {len(all_chunks)} chunks from disk for current query.")
+    
+    # Also ensure the data_processor's internal chunks are up-to-date for searching
+    # This is a critical step to ensure the search is performed on the latest index
+    if not data_processor.index or data_processor.index.ntotal != len(all_chunks):
+        #logging.info("Q&A: Index not loaded or out of sync. Attempting to rebuild/reload index.")
+        data_processor.create_and_save_index(all_chunks) # Rebuilds if out of sync or not loaded
+        data_processor.load_index() # Ensures the index is loaded into memory after potential rebuild
+
 
     # Use the global all_chunks to check if there's data
     if not all_chunks or not data_processor.index:
@@ -114,18 +143,21 @@ async def main():
         print("2. Ask a question.")
         print("3. Exit.")
         
-        choice = input("Enter your choice (1, 2, or 3): ").strip()
+        # Use the asynchronous input function and await its result before stripping
+        choice = (await async_input("Enter your choice (1, 2, or 3): ")).strip() # <--- MODIFIED LINE
 
         if choice == '1':
-            urls_input = input("Enter URL(s) to process (comma-separated): ")
+            # Use the asynchronous input function and await its result before stripping
+            urls_input = (await async_input("Enter URL(s) to process (comma-separated): ")).strip() # <--- MODIFIED LINE
             urls = [url.strip() for url in urls_input.split(',')]
             if not urls:
                 print("No URLs provided. Returning to main menu.")
                 continue
 
-            print(f"Starting background processing for {len(urls)} URL(s). You can continue using the system.")
-            # Create a task to run the processing in the background
+            print(f"Scheduling background processing for {len(urls)} URL(s). You can continue using the system.")
+            # This is the critical line: create the task and let it run.
             asyncio.create_task(_process_urls_in_background(urls))
+            print("Processing task scheduled. Check logs for progress. Returning to menu.") # Immediate feedback
 
         elif choice == '2':
             # Check against the global all_chunks
@@ -133,7 +165,8 @@ async def main():
                 print("The knowledge base is empty or the index is not loaded. Please add content by choosing option 1 first.")
                 continue
 
-            question = input("Enter your question: ")
+            # Use the asynchronous input function and await its result before stripping
+            question = (await async_input("Enter your question: ")).strip() # <--- MODIFIED LINE
             if not question:
                 print("No question provided. Returning to main menu.")
                 continue
@@ -148,4 +181,8 @@ async def main():
             print("Invalid choice. Please enter 1, 2, or 3.")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    finally:
+        # Ensure the executor is shut down cleanly when the program exits
+        executor.shutdown(wait=True)
