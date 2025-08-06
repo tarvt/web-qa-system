@@ -1,7 +1,9 @@
 import os
 import google.generativeai as genai
 import logging
+import asyncio
 from typing import List, Dict, Any, Optional
+from dotenv import load_dotenv 
 
 # Set up basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -13,17 +15,18 @@ class GeminiLLM:
     def __init__(self, model_name: str = "gemini-1.5-flash"):
         """
         Initializes the Gemini LLM client.
-        Expects the GEMINI_API_KEY environment variable to be set.
+        Attempts to load GEMINI_API_KEY from .env file or environment variables.
         
         Args:
             model_name: The name of the Gemini model to use (e.g., "gemini-1.5-flash", "gemini-pro").
         """
+        load_dotenv() 
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError(
-                "GEMINI_API_KEY environment variable not set. "
-                "Please get your API key from Google AI Studio (https://aistudio.google.com/app/apikey) "
-                "and set it as an environment variable."
+                "GEMINI_API_KEY not found. Please create a .env file in the project root "
+                "with GEMINI_API_KEY='YOUR_API_KEY_HERE' or set it as an environment variable. "
+                "Get your API key from Google AI Studio: https://aistudio.google.com/app/apikey"
             )
         
         genai.configure(api_key=api_key)
@@ -89,4 +92,3 @@ class GeminiLLM:
         except Exception as e:
             logging.error(f"An unexpected error occurred during LLM generation: {e}")
             return "An unexpected error occurred while generating the answer."
-
