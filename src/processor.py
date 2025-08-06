@@ -12,7 +12,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Constants for file paths
 FAISS_INDEX_FILE = "data/index.faiss"
 CHUNK_METADATA_FILE = "data/chunks_with_metadata.json"
-
+logging.getLogger("transformers").setLevel(logging.ERROR) 
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR) 
 class DataProcessor:
     """
     Handles the embedding and indexing of content chunks.
@@ -39,7 +40,7 @@ class DataProcessor:
         Returns:
             A numpy array of embeddings.
         """
-        logging.info(f"Generating embeddings for {len(texts)} text chunks.")
+        #logging.info(f"Generating embeddings for {len(texts)} text chunks.")
         return self.model.encode(texts, convert_to_tensor=False)
 
     def _build_faiss_index(self, embeddings: np.ndarray):
@@ -52,7 +53,7 @@ class DataProcessor:
         dimension = embeddings.shape[1]
         self.index = faiss.IndexFlatL2(dimension)
         self.index.add(embeddings)
-        logging.info(f"FAISS index built with {self.index.ntotal} vectors.")
+        #logging.info(f"FAISS index built with {self.index.ntotal} vectors.")
 
     def _save_index_and_metadata(self, chunks: List[Dict[str, Any]]):
         """
@@ -65,13 +66,13 @@ class DataProcessor:
         
         # Save the FAISS index
         faiss.write_index(self.index, FAISS_INDEX_FILE)
-        logging.info(f"FAISS index saved to {FAISS_INDEX_FILE}")
+        #logging.info(f"FAISS index saved to {FAISS_INDEX_FILE}")
 
         # Save the chunks with their metadata
         try:
             with open(CHUNK_METADATA_FILE, 'w') as f:
                 json.dump(chunks, f, indent=4)
-            logging.info(f"Chunks metadata saved to {CHUNK_METADATA_FILE}")
+            #logging.info(f"Chunks metadata saved to {CHUNK_METADATA_FILE}")
         except Exception as e:
             logging.error(f"Error saving chunks metadata: {e}")
 
@@ -99,14 +100,14 @@ class DataProcessor:
         if os.path.exists(FAISS_INDEX_FILE) and os.path.exists(CHUNK_METADATA_FILE):
             try:
                 self.index = faiss.read_index(FAISS_INDEX_FILE)
-                logging.info(f"FAISS index loaded from {FAISS_INDEX_FILE}")
+                #logging.info(f"FAISS index loaded from {FAISS_INDEX_FILE}")
                 
                 with open(CHUNK_METADATA_FILE, 'r') as f:
                     self.chunks = json.load(f)
-                logging.info(f"Loaded {len(self.chunks)} chunks from {CHUNK_METADATA_FILE}")
+                #logging.info(f"Loaded {len(self.chunks)} chunks from {CHUNK_METADATA_FILE}")
                 return True
             except Exception as e:
-                logging.error(f"Error loading FAISS index or metadata: {e}")
+                #logging.error(f"Error loading FAISS index or metadata: {e}")
                 return False
         return False
     

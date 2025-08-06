@@ -27,7 +27,7 @@ async def fetch_url(session: aiohttp.ClientSession, url: str) -> Optional[str]:
         async with session.get(url, headers=headers, timeout=10) as response:
             # Raise an exception for bad status codes (4xx or 5xx)
             response.raise_for_status()
-            logging.info(f"Successfully fetched URL: {url}")
+            #logging.info(f"Successfully fetched URL: {url}")
             return await response.text()
     except aiohttp.ClientError as e:
         logging.error(f"aiohttp error fetching {url}: {e}")
@@ -100,7 +100,7 @@ async def extract_content_from_urls(urls: List[str]) -> List[Dict[str, Any]]:
                         "url": url,
                         "content": text
                     })
-                    logging.info(f"Extracted content from {url}, length: {len(text)} characters.")
+                    #logging.info(f"Extracted content from {url}, length: {len(text)} characters.")
                 else:
                     logging.warning(f"Could not extract meaningful text from {url}")
             else:
