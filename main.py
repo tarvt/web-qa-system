@@ -13,29 +13,35 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 data_processor = DataProcessor()
 llm_client = None # Initialize as None, will be set up when needed
 
+# Declare all_chunks as a global variable to be accessible and modifiable
+# by both main and background processing functions.
+all_chunks: List[Dict[str, Any]] = []
+
 async def _process_urls_in_background(urls: List[str]):
     """
     Helper function to run URL fetching, content extraction, and index updating
     in the background.
     """
-    global all_chunks # Access the global list of chunks
+    global all_chunks # Explicitly declare intent to modify the global all_chunks
 
     logging.info(f"Background task started for {len(urls)} URL(s).")
     new_extracted_chunks = await extract_content_from_urls(urls)
     
     if new_extracted_chunks:
-        # Reload all chunks to ensure we have the latest state before appending
-        # This prevents race conditions if multiple background tasks are running
-        current_all_chunks = await load_chunks() 
-        current_all_chunks.extend(new_extracted_chunks)
-        await save_chunks(current_all_chunks)
+        # Load the absolute latest state of chunks from disk
+        # This is crucial to avoid overwriting changes from other potential background tasks
+        # or missed updates if the main loop's `all_chunks` isn't fully synchronized yet.
+        current_disk_chunks = await load_chunks() 
+        current_disk_chunks.extend(new_extracted_chunks)
+        await save_chunks(current_disk_chunks)
         
-        # Update the in-memory all_chunks for immediate use in the main loop
-        # This is important for subsequent Q&A sessions in the same run
-        all_chunks = current_all_chunks 
+        # Update the global all_chunks variable
+        # This ensures the main loop's in-memory data is consistent with disk
+        all_chunks = current_disk_chunks 
 
         logging.info("Processing all content chunks and updating the search index in background...")
-        data_processor.create_and_save_index(all_chunks) # This will re-index all data
+        # Pass the globally updated 'all_chunks' to the data processor
+        data_processor.create_and_save_index(all_chunks) 
         logging.info("Background index update completed.")
     else:
         logging.warning("No new content was successfully extracted in background task.")
@@ -47,8 +53,9 @@ async def handle_question_answering(question: str):
     """
     global llm_client # Declare global to modify the llm_client variable
 
-    if not data_processor.index:
-        print("The search index is not loaded. Please add content first to build the index.")
+    # Use the global all_chunks to check if there's data
+    if not all_chunks or not data_processor.index:
+        print("The knowledge base is empty or the index is not loaded. Please add content by choosing option 1 first.")
         return
 
     if llm_client is None:
@@ -88,7 +95,7 @@ async def main():
     """
     global all_chunks # Declare global to modify the all_chunks variable
     
-    # Load any existing data chunks at the start
+    # Load any existing data chunks at the start into the global variable
     all_chunks = await load_chunks()
     
     # Try to load an existing FAISS index
@@ -121,6 +128,7 @@ async def main():
             asyncio.create_task(_process_urls_in_background(urls))
 
         elif choice == '2':
+            # Check against the global all_chunks
             if not all_chunks or not data_processor.index:
                 print("The knowledge base is empty or the index is not loaded. Please add content by choosing option 1 first.")
                 continue
