@@ -93,8 +93,17 @@ Follow these steps to set up and run the system:
     ```bash
     mkdir data
     ```
+5.  **Set up Google Gemini API Key :**
+    Obtain a free API key from Google AI Studio.
 
-5.  **Run the CLI Application:**
+    In the main web-content-qa-system/ folder (the same folder as main.py and README.md), create a new file named .env (note the dot at the beginning).
+
+    Open this .env file and add the following line, replacing YOUR_API_KEY_HERE with your actual key:
+    ```bash
+    GEMINI_API_KEY='YOUR_API_KEY_HERE'
+    ```
+
+6.  **Run the CLI Application:**
     ```bash
     python main.py
     ```
